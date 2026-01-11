@@ -23,21 +23,35 @@ IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISI
 OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include <nodelet/loader.h>
-#include <ros/ros.h>
+#include <rclcpp/rclcpp.hpp>
+#include <sensor_msgs/msg/point_cloud2.hpp>
+#include <nav_msgs/msg/odometry.hpp>
+#include <groundgrid/GroundGrid.h>
 
-int main(int argc, char ** argv) {
-    ros::init(argc, argv, "groundgrid");
+class GroundGridNode : public rclcpp::Node {
+public:
+  GroundGridNode() : Node("groundgrid_node") {
+    auto qos = rclcpp::SensorDataQoS();
+    odom_sub_ = create_subscription<nav_msgs::msg::Odometry>(
+      "/localization/odometry/filtered_map", qos,
+      [this](nav_msgs::msg::Odometry::SharedPtr msg) { map_ptr_ = grid_.update(msg); });
+    cloud_sub_ = create_subscription<sensor_msgs::msg::PointCloud2>(
+      "/sensors/velodyne_points", qos,
+      [this](sensor_msgs::msg::PointCloud2::SharedPtr) {
+        if (!map_ptr_) return;
+        // 既存のGroundSegmentation処理をROS2用に移植してここで呼び出してください
+      });
+  }
+private:
+  groundgrid::GroundGrid grid_;
+  std::shared_ptr<grid_map::GridMap> map_ptr_;
+  rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
+  rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr cloud_sub_;
+};
 
-    nodelet::Loader nodelet;
-    nodelet::M_string remappings(ros::names::getRemappings());
-    nodelet::V_string nodeletArgv(argv, argv + argc);
-
-    std::string nodeletName = "groundgrid/Nodelet";
-    // nodelets_plugins.xml refers to the value of nodeletName as "name"
-    if (not nodelet.load(ros::this_node::getName(), nodeletName, remappings, nodeletArgv)) {
-        return -1;
-    }
-
-    ros::spin();
+int main(int argc, char * argv[]) {
+  rclcpp::init(argc, argv);
+  rclcpp::spin(std::make_shared<GroundGridNode>());
+  rclcpp::shutdown();
+  return 0;
 }
