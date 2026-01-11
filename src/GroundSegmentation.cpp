@@ -23,7 +23,7 @@ IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISI
 OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include <groundgrid/GroundSegmentation.h>
+#include <groundgrid/GroundSegmentation.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <rclcpp/rclcpp.hpp>
 #include <geometry_msgs/msg/point_stamped.hpp>

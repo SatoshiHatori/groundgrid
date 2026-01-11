@@ -39,7 +39,7 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <grid_map_cv/GridMapCvConverter.hpp>
 
 // Config
-#include <groundgrid/GroundGridConfig.h>
+#include <groundgrid/GroundGridConfig.hpp>
 
 
 namespace groundgrid {

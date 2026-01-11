@@ -24,30 +24,7 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include <rclcpp/rclcpp.hpp>
-#include <sensor_msgs/msg/point_cloud2.hpp>
-#include <nav_msgs/msg/odometry.hpp>
-#include <groundgrid/GroundGrid.h>
-
-class GroundGridNode : public rclcpp::Node {
-public:
-  GroundGridNode() : Node("groundgrid_node") {
-    auto qos = rclcpp::SensorDataQoS();
-    odom_sub_ = create_subscription<nav_msgs::msg::Odometry>(
-      "/localization/odometry/filtered_map", qos,
-      [this](nav_msgs::msg::Odometry::SharedPtr msg) { map_ptr_ = grid_.update(msg); });
-    cloud_sub_ = create_subscription<sensor_msgs::msg::PointCloud2>(
-      "/sensors/velodyne_points", qos,
-      [this](sensor_msgs::msg::PointCloud2::SharedPtr) {
-        if (!map_ptr_) return;
-        // 既存のGroundSegmentation処理をROS2用に移植してここで呼び出してください
-      });
-  }
-private:
-  groundgrid::GroundGrid grid_;
-  std::shared_ptr<grid_map::GridMap> map_ptr_;
-  rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
-  rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr cloud_sub_;
-};
+#include <groundgrid/GroundGridNode.hpp>
 
 int main(int argc, char * argv[]) {
   rclcpp::init(argc, argv);

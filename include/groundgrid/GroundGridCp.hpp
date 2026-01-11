@@ -23,66 +23,52 @@ IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISI
 OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#pragma once
+#include <groundgrid/GroundGrid.h>
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
+#include <pcl_conversions/pcl_conversions.h>
+#include <tf2_ros/transform_listener.h>
+#include <velodyne_pointcloud/point_types.h>
 
-// Grid map
-#include <grid_map_ros/grid_map_ros.hpp>
-
-// ros msgs
-#include <rclcpp/rclcpp.hpp>
-#include <nav_msgs/msg/odometry.hpp>
-#include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
+#include <chrono>
 #include <geometry_msgs/msg/point_stamped.hpp>
 #include <geometry_msgs/msg/transform_stamped.hpp>
-
-// tf
-#include <tf2_ros/buffer.h>
-#include <tf2_ros/transform_listener.h>
+#include <grid_map_ros/GridMapRosConverter.hpp>
+#include <groundgrid/GroundGridConfig.hpp>
+#include <groundgrid/GroundSegmentation.hpp>
+#include <nav_msgs/msg/odometry.hpp>
+#include <numeric>
+#include <rclcpp/rclcpp.hpp>
+#include <sensor_msgs/msg/point_cloud2.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
-#include <groundgrid/GroundGridConfig.hpp>
+namespace groundgrid
+{
 
+class GroundGridNodeCp : public rclcpp::Node
+{
+public:
+  using PCLPoint = velodyne_pointcloud::PointXYZIR;
 
-namespace groundgrid {
+  GroundGridNodeCp()
+  : Node("groundgrid_node"), tf_buffer_(this->get_clock()), tf_listener_(tf_buffer_);
 
-/**
- **
- ** @ingroup @@
- */
-class GroundGrid {
-   public:
+private:
+  void load_parameters();
+  void handle_cloud(const sensor_msgs::msg::PointCloud2::SharedPtr msg);
 
-    /** Constructor.
-     */
-    GroundGrid();
+  std::shared_ptr<groundgrid::GroundGridConfig> config_;
+  std::shared_ptr<groundgrid::GroundGrid> grid_;
+  groundgrid::GroundSegmentation segmentation_;
+  std::shared_ptr<grid_map::GridMap> map_ptr_;
 
-    /** Destructor.
-     */
-    virtual ~GroundGrid();
+  tf2_ros::Buffer tf_buffer_;
+  tf2_ros::TransformListener tf_listener_;
 
-    /** Sets the current dynamic configuration.
-     **
-     ** @param config
-     */
-    void setConfig(const groundgrid::GroundGridConfig & config);
-
-    void initGroundGrid(const nav_msgs::msg::Odometry::SharedPtr inOdom);
-    std::shared_ptr<grid_map::GridMap> update(const nav_msgs::msg::Odometry::SharedPtr inOdom);
-
-    const float mResolution = .33f;
-    const float mDimension = 120.0f;
-
-   private:
-    /// dynamic config attribute
-    groundgrid::GroundGridConfig config_;
-
-    // tf
-    tf2_ros::Buffer mTfBuffer;
-    tf2_ros::TransformListener mTf2_listener;
-
-    double mDetectionRadius = 60.0;
-    std::shared_ptr<grid_map::GridMap> mMap_ptr;
-    geometry_msgs::msg::TransformStamped mTfPosition, mTfLux, mTfUtm, mTfMap;
-    geometry_msgs::msg::PoseWithCovarianceStamped mLastPose;
+  rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
+  rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr cloud_sub_;
+  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr cloud_pub_;
+  rclcpp::Publisher<grid_map_msgs::msg::GridMap>::SharedPtr gridmap_pub_;
 };
-}
+
+}  // namespace groundgrid
