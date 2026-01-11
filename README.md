@@ -39,7 +39,7 @@ roslaunch groundgrid KITTIPlayback.launch directory:=/path/to/the/SemanticKITTI/
 
 The launch file opens a RViz window which displays the segmentation results:
 <p align="center">
-  <img src="/dpcs/img/rviz.png" alt="SemanticKitti playback Rviz window"/>
+  <img src="/docs/img/rviz.png" alt="SemanticKitti playback Rviz window"/>
 </p>
 
 
