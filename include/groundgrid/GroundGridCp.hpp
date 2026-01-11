@@ -23,7 +23,7 @@ IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISI
 OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include <groundgrid/GroundGrid.h>
+#include <groundgrid/GroundGrid.hpp>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl_conversions/pcl_conversions.h>
