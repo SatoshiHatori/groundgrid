@@ -1,7 +1,7 @@
 # Source code for the article "GroundGrid: LiDAR Point Cloud Ground Segmentation and Terrain Estimation"
 This repository contains the source code for the article "GroundGrid: LiDAR Point Cloud Ground Segmentation and Terrain Estimation" published in the IEEE Robotics and Automation Letters ([DOI: 10.1109/LRA.2023.3333233](https://doi.org/10.1109/lra.2023.3333233)).
 <p align="center">
-  <img src="/res/img/teaser.gif" alt="Ground segmentation results"/>
+  <img src="/dpcs/img/teaser.gif" alt="Ground segmentation results"/>
 </p>
 
 # Dependencies
@@ -39,7 +39,7 @@ roslaunch groundgrid KITTIPlayback.launch directory:=/path/to/the/SemanticKITTI/
 
 The launch file opens a RViz window which displays the segmentation results:
 <p align="center">
-  <img src="/res/img/rviz.png" alt="SemanticKitti playback Rviz window"/>
+  <img src="/dpcs/img/rviz.png" alt="SemanticKitti playback Rviz window"/>
 </p>
 
 
