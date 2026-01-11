@@ -59,6 +59,7 @@ private:
   std::shared_ptr<groundgrid::GroundGrid> grid_;
   groundgrid::GroundSegmentation segmentation_;
   std::shared_ptr<grid_map::GridMap> map_ptr_;
+  std::string global_frame_;
 
   tf2_ros::Buffer tf_buffer_;
   tf2_ros::TransformListener tf_listener_;

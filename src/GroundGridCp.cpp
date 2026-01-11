@@ -79,6 +79,7 @@ void GroundGridCp::load_parameters()
   config_.min_outlier_detection_ground_confidence =
     declare_parameter<double>("min_outlier_detection_ground_confidence", 1.25);
   config_.thread_count = declare_parameter<int>("thread_count", 8);
+  global_frame_ = declare_parameter<std::string>("global_frame", "map");
 }
 
 void GroundGridCp::handle_cloud(sensor_msgs::msg::PointCloud2::SharedPtr msg)
@@ -90,10 +91,10 @@ void GroundGridCp::handle_cloud(sensor_msgs::msg::PointCloud2::SharedPtr msg)
 
   geometry_msgs::msg::TransformStamped map2base_tf, cloud2origin_tf;
   try {
-    map2base_tf =
-      tf_buffer_.lookupTransform("map", "base_link", msg->header.stamp, tf2::durationFromSec(0.0));
+    map2base_tf = tf_buffer_.lookupTransform(
+      global_frame_, "base_link", msg->header.stamp, tf2::durationFromSec(0.0));
     cloud2origin_tf = tf_buffer_.lookupTransform(
-      "map", msg->header.frame_id, msg->header.stamp, tf2::durationFromSec(0.0));
+      global_frame_, msg->header.frame_id, msg->header.stamp, tf2::durationFromSec(0.0));
   } catch (tf2::TransformException & ex) {
     RCLCPP_WARN(
       get_logger(), "Received point cloud but transforms are not available: %s", ex.what());
@@ -107,16 +108,16 @@ void GroundGridCp::handle_cloud(sensor_msgs::msg::PointCloud2::SharedPtr msg)
   tf2::doTransform(origin, origin, cloud2origin_tf);
 
   // transform cloud to map frame if needed
-  if (msg->header.frame_id != "map") {
+  if (msg->header.frame_id != global_frame_) {
     geometry_msgs::msg::TransformStamped map2cloud_tf;
     pcl::PointCloud<PCLPoint>::Ptr transformed(new pcl::PointCloud<PCLPoint>);
     transformed->points.reserve(cloud->points.size());
     map2cloud_tf = tf_buffer_.lookupTransform(
-      "map", msg->header.frame_id, msg->header.stamp, tf2::durationFromSec(0.0));
+      global_frame_, msg->header.frame_id, msg->header.stamp, tf2::durationFromSec(0.0));
 
     geometry_msgs::msg::PointStamped ps_in;
     ps_in.header = msg->header;
-    ps_in.header.frame_id = "map";
+    ps_in.header.frame_id = global_frame_;
     for (const auto & p : cloud->points) {
       ps_in.point.x = p.x; ps_in.point.y = p.y; ps_in.point.z = p.z;
       tf2::doTransform(ps_in, ps_in, map2cloud_tf);
