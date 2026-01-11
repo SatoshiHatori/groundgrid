@@ -78,6 +78,6 @@ install(TARGETS
 )
 
 install(DIRECTORY include/ DESTINATION include)
-install(DIRECTORY launch rviz DESTINATION share/${PROJECT_NAME})
+install(DIRECTORY launch rviz config DESTINATION share/${PROJECT_NAME})
 ament_package()
 
