@@ -27,9 +27,6 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <chrono>
 
-// Ros package for package path resolution
-#include <ros/package.h>
-
 // Grid map
 #include <grid_map_cv/GridMapCvConverter.hpp>
 #include <grid_map_core/GridMapMath.hpp>
@@ -40,87 +37,75 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 using namespace groundgrid;
 
-GroundGrid::GroundGrid() : mTf2_listener(mTfBuffer)
-{}
+GroundGrid::GroundGrid() : mTfBuffer(rclcpp::Clock::make_shared()), mTf2_listener(mTfBuffer) {}
 
 GroundGrid::~GroundGrid() {}
 
-void GroundGrid::setConfig(groundgrid::GroundGridConfig & config) { config_ = config; }
+void GroundGrid::setConfig(const groundgrid::GroundGridConfig & config) { config_ = config; }
 
-void GroundGrid::initGroundGrid(const nav_msgs::OdometryConstPtr &inOdom)
-{
-    auto start = std::chrono::steady_clock::now();
-    geometry_msgs::PoseWithCovarianceStamped odomPose, mapPose;
+void GroundGrid::initGroundGrid(const nav_msgs::msg::Odometry::SharedPtr inOdom) {
+  auto logger = rclcpp::get_logger("GroundGrid");
+  geometry_msgs::msg::PoseWithCovarianceStamped odomPose, mapPose;
 
-    mMap_ptr = std::make_shared<grid_map::GridMap, const std::vector< std::string >>({"points", "ground", "groundpatch", "minGroundHeight", "maxGroundHeight"});
-    grid_map::GridMap& map = *mMap_ptr;
-    map.setFrameId("map");
-    map.setGeometry(grid_map::Length(mDimension, mDimension), mResolution, grid_map::Position(inOdom->pose.pose.position.x,inOdom->pose.pose.position.y));
-    ROS_INFO("Created map with size %f x %f m (%i x %i cells).",
-             map.getLength().x(), map.getLength().y(),
-             map.getSize()(0), map.getSize()(1));
-
-
-    odomPose.pose = inOdom->pose;
-    odomPose.header = inOdom->header;
-    std::vector<grid_map::BufferRegion> damage;
-    map.move(grid_map::Position(odomPose.pose.pose.position.x, odomPose.pose.pose.position.y), damage);
-    grid_map::BufferRegion region(grid_map::Index(0,0), map.getSize(), grid_map::BufferRegion::Quadrant(0));
+  mMap_ptr = std::make_shared<grid_map::GridMap, const std::vector< std::string >>({"points", "ground", "groundpatch", "minGroundHeight", "maxGroundHeight"});
+  grid_map::GridMap& map = *mMap_ptr;
+  map.setFrameId("map");
+  map.setGeometry(grid_map::Length(mDimension, mDimension), mResolution, grid_map::Position(inOdom->pose.pose.position.x,inOdom->pose.pose.position.y));
+  RCLCPP_INFO(logger, "Created map with size %f x %f m (%d x %d cells).",
+              map.getLength().x(), map.getLength().y(),
+              map.getSize()(0), map.getSize()(1));
 
 
-    map["points"].setZero();
-    map["ground"].setConstant(inOdom->pose.pose.position.z);
-    map["groundpatch"].setConstant(0.0000001);
-    map["minGroundHeight"].setConstant(100.0);
-    map["maxGroundHeight"].setConstant(-100.0);
+  odomPose.pose = inOdom->pose;
+  odomPose.header = inOdom->header;
+  std::vector<grid_map::BufferRegion> damage;
+  map.move(grid_map::Position(odomPose.pose.pose.position.x, odomPose.pose.pose.position.y), damage);
+  grid_map::BufferRegion region(grid_map::Index(0,0), map.getSize(), grid_map::BufferRegion::Quadrant(0));
 
-    auto end = std::chrono::steady_clock::now();
-    ROS_DEBUG_STREAM("transforms lookup " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << "ms");
-    mLastPose = odomPose;
+
+  map["points"].setZero();
+  map["ground"].setConstant(inOdom->pose.pose.position.z);
+  map["groundpatch"].setConstant(0.0000001);
+  map["minGroundHeight"].setConstant(100.0);
+  map["maxGroundHeight"].setConstant(-100.0);
+
+  mLastPose = odomPose;
 }
 
 
-std::shared_ptr<grid_map::GridMap> GroundGrid::update(const nav_msgs::OdometryConstPtr &inOdom)
-{
-    if(!mMap_ptr){
-        initGroundGrid(inOdom);
-        return mMap_ptr;
-    }
+std::shared_ptr<grid_map::GridMap> GroundGrid::update(const nav_msgs::msg::Odometry::SharedPtr inOdom) {
+  auto logger = rclcpp::get_logger("GroundGrid");
+  if(!mMap_ptr){
+    initGroundGrid(inOdom);
+    return mMap_ptr;
+  }
 
-    auto start = std::chrono::steady_clock::now();
-    grid_map::GridMap& map = *mMap_ptr;
+  auto start = std::chrono::steady_clock::now();
+  grid_map::GridMap& map = *mMap_ptr;
 
-    geometry_msgs::PoseWithCovarianceStamped poseDiff;
-    poseDiff.pose.pose.position.x = inOdom->pose.pose.position.x - mLastPose.pose.pose.position.x;
-    poseDiff.pose.pose.position.y = inOdom->pose.pose.position.y - mLastPose.pose.pose.position.y;
-    std::vector<grid_map::BufferRegion> damage;
-    map.move(grid_map::Position(inOdom->pose.pose.position.x, inOdom->pose.pose.position.y), damage);
+  geometry_msgs::msg::PoseWithCovarianceStamped poseDiff;
+  poseDiff.pose.pose.position.x = inOdom->pose.pose.position.x - mLastPose.pose.pose.position.x;
+  poseDiff.pose.pose.position.y = inOdom->pose.pose.position.y - mLastPose.pose.pose.position.y;
+  std::vector<grid_map::BufferRegion> damage;
+  map.move(grid_map::Position(inOdom->pose.pose.position.x, inOdom->pose.pose.position.y), damage);
 
-    // static so if the new transform is not yet available, we can use the last one
-    static geometry_msgs::TransformStamped base_to_map;
+  // static so if the new transform is not yet available, we can use the last one
+  static geometry_msgs::msg::TransformStamped base_to_map;
 
-    try{
-        base_to_map = mTfBuffer.lookupTransform("base_link", "map", inOdom->header.stamp);
-    }
-    catch (tf2::LookupException& e)
-    {
-        // potentially degraded performance
-        ROS_WARN("no transform? -> error: %s", e.what());
-    }
-    catch (tf2::ExtrapolationException& e)
-    {
-        // can happen when new transform has not yet been published, we can use the old one instead
-        ROS_DEBUG("need to extrapolate a transform? -> error: %s", e.what());
-    }
+  try {
+    base_to_map = mTfBuffer.lookupTransform("base_link", "map", inOdom->header.stamp, std::chrono::milliseconds(0));
+  } catch (tf2::TransformException & e) {
+    RCLCPP_WARN(logger, "Transform error: %s", e.what());
+  }
 
-    geometry_msgs::PointStamped ps;
-    ps.header = inOdom->header;
-    ps.header.frame_id = "map";
-    grid_map::Position pos;
+  geometry_msgs::msg::PointStamped ps;
+  ps.header = inOdom->header;
+  ps.header.frame_id = "map";
+  grid_map::Position pos;
 
-    for(auto region : damage){
-        for(auto it = grid_map::SubmapIterator(map, region); !it.isPastEnd(); ++it){
-            auto idx = *it;
+  for(auto region : damage){
+    for(auto it = grid_map::SubmapIterator(map, region); !it.isPastEnd(); ++it){
+      auto idx = *it;
 
 	    map.getPosition(idx, pos);
 	    ps.point.x = pos(0);
@@ -142,6 +127,6 @@ std::shared_ptr<grid_map::GridMap> GroundGrid::update(const nav_msgs::OdometryCo
 
     map.convertToDefaultStartIndex();
     auto end = std::chrono::steady_clock::now();
-    ROS_DEBUG_STREAM("total " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << "ms");
+    RCLCPP_DEBUG(logger, "total %ld ms", std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count());
     return mMap_ptr;
 }
