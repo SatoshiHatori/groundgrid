@@ -25,23 +25,21 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
-// ros
-#include <sensor_msgs/PointCloud2.h>
-#include <geometry_msgs/TransformStamped.h>
+// ros2 msgs
+#include <geometry_msgs/msg/transform_stamped.hpp>
 
 // Pcl
-#include <pcl_ros/point_cloud.h>
+#include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include "velodyne_pointcloud/point_types.h"
 
 // Grid map
 #include <grid_map_ros/grid_map_ros.hpp>
-#include <grid_map_msgs/GridMap.h>
 #include <grid_map_cv/GridMapCvConverter.hpp>
 
 // Config
-#include <groundgrid/GroundGridConfig.h>
+#include <groundgrid/GroundGridConfig.hpp>
 
 
 namespace groundgrid {
@@ -50,15 +48,15 @@ class GroundSegmentation {
     typedef velodyne_pointcloud::PointXYZIR PCLPoint;
 
     GroundSegmentation() {};
-    void init(ros::NodeHandle& nodeHandle, const size_t dimension, const float& resolution);
-    pcl::PointCloud<PCLPoint>::Ptr filter_cloud(const pcl::PointCloud<PCLPoint>::Ptr cloud, const PCLPoint& cloudOrigin, const geometry_msgs::TransformStamped& mapToBase, grid_map::GridMap &map);
+    void init(const size_t dimension, const float& resolution);
+    pcl::PointCloud<PCLPoint>::Ptr filter_cloud(const pcl::PointCloud<PCLPoint>::Ptr cloud, const PCLPoint& cloudOrigin, const geometry_msgs::msg::TransformStamped& mapToBase, grid_map::GridMap &map);
     void insert_cloud(const pcl::PointCloud<PCLPoint>::Ptr cloud, const size_t start, const size_t end, const PCLPoint& cloudOrigin, std::vector<std::pair<size_t, grid_map::Index> >& point_index, std::vector<std::pair<size_t, grid_map::Index> >& ignored, std::vector<size_t>& outliers, grid_map::GridMap &map);
     void setConfig(const groundgrid::GroundGridConfig& config);
     // section defines the section  of the map to process (0: top-left, 1: top-right, 2: bottom-left, 3: bottom-right)
     // used for parallel execution
     void detect_ground_patches(grid_map::GridMap &map, unsigned short section) const;
     template<int S> void detect_ground_patch(grid_map::GridMap &map, size_t i, size_t j) const;
-    void spiral_ground_interpolation(grid_map::GridMap &map, const geometry_msgs::TransformStamped &toBase) const;
+    void spiral_ground_interpolation(grid_map::GridMap &map, const geometry_msgs::msg::TransformStamped &toBase) const;
     void interpolate_cell(grid_map::GridMap &map, const size_t x, const size_t y) const;
 
 protected:

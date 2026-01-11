@@ -23,12 +23,50 @@ IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISI
 OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include <rclcpp/rclcpp.hpp>
-#include <groundgrid/GroundGridCp.hpp>
+#include <groundgrid/GroundGrid.h>
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
+#include <pcl_conversions/pcl_conversions.h>
+#include <tf2_ros/transform_listener.h>
+#include <velodyne_pointcloud/point_types.h>
 
-int main(int argc, char * argv[]) {
-  rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<groundgrid::GroundGridCp>());
-  rclcpp::shutdown();
-  return 0;
-}
+#include <chrono>
+#include <geometry_msgs/msg/point_stamped.hpp>
+#include <geometry_msgs/msg/transform_stamped.hpp>
+#include <grid_map_ros/GridMapRosConverter.hpp>
+#include <groundgrid/GroundGridConfig.hpp>
+#include <groundgrid/GroundSegmentation.hpp>
+#include <nav_msgs/msg/odometry.hpp>
+#include <numeric>
+#include <rclcpp/rclcpp.hpp>
+#include <sensor_msgs/msg/point_cloud2.hpp>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
+
+namespace groundgrid
+{
+
+class GroundGridCp : public rclcpp::Node
+{
+public:
+  using PCLPoint = velodyne_pointcloud::PointXYZIR;
+  explicit GroundGridCp(const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
+
+private:
+  void load_parameters();
+  void handle_cloud(const sensor_msgs::msg::PointCloud2::SharedPtr msg);
+
+  groundgrid::GroundGridConfig config_;
+  std::shared_ptr<groundgrid::GroundGrid> grid_;
+  groundgrid::GroundSegmentation segmentation_;
+  std::shared_ptr<grid_map::GridMap> map_ptr_;
+
+  tf2_ros::Buffer tf_buffer_;
+  tf2_ros::TransformListener tf_listener_;
+
+  rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
+  rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr cloud_sub_;
+  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr cloud_pub_;
+  rclcpp::Publisher<grid_map_msgs::msg::GridMap>::SharedPtr gridmap_pub_;
+};
+
+}  // namespace groundgrid
