@@ -4,37 +4,35 @@ This repository contains the source code for the article "GroundGrid: LiDAR Poin
   <img src="/dpcs/img/teaser.gif" alt="Ground segmentation results"/>
 </p>
 
-# Dependencies
-- ROS Noetic Ninjemys
-- catkin
-- roscpp
+## Dependencies
+- rclcpp
+- rclcpp_components
 - geometry_msgs
 - sensor_msgs
 - std_msgs
-- message_generation
-- message_runtime
-- velodyne_pointcloud
-- nodelet
-- dynamic_reconfigure
+- nav_msgs
+- tf2
+- tf2_ros
+- tf2_geometry_msgs
 - grid_map_core
 - grid_map_ros
 - grid_map_cv
-- grid_map_loader
 - grid_map_msgs
-- grid_map_rviz_plugin
-- grid_map_visualization
 - cv_bridge
-- pcl_ros
+- image_transport
+- pcl_conversions
+- PCL
 
-# Build
-```
-catkin build -DCMAKE_BUILD_TYPE=Release groundgrid
+## Build
+```bash
+colcon build --symlink-install --packages-select groundgrid
+source install/setup.bash
 ```
 
-# Launch
-## Playback
-```
-roslaunch groundgrid KITTIPlayback.launch directory:=/path/to/the/SemanticKITTI/dataset sequence:=0
+## Launch
+### Playback
+```bash
+ros2 launch groundgrid KITTIPlayback.launch.py directory:=/path/to/the/SemanticKITTI/dataset sequence:=0
 ```
 
 The launch file opens a RViz window which displays the segmentation results:
@@ -43,9 +41,9 @@ The launch file opens a RViz window which displays the segmentation results:
 </p>
 
 
-## Ground Segmentation Evaluation
-```
-roslaunch groundgrid KITTIEvaluate.launch directory:=/path/to/the/SemanticKITTI/dataset sequence:=0
+### Ground Segmentation Evaluation
+```bash
+ros2 launch groundgrid KITTIEvaluate.launch.py directory:=/path/to/the/SemanticKITTI/dataset sequence:=0
 ```
 
 This launch file evaluates the ground segmentation performance of GroundGrid and displays the results every 500 processed clouds.
@@ -91,7 +89,7 @@ Accuracy		97.24%		400339747	411708895
 IoUg			94.84%
 ```
 
-# Citation
+## Citation
 ```
 @article{steinke2024groundgrid,
   author={Steinke, Nicolai and Goehring, Daniel and Rojas, Raúl},
