@@ -24,11 +24,11 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include <rclcpp/rclcpp.hpp>
-#include <groundgrid/GroundGridNode.hpp>
+#include <groundgrid/GroundGridCp.hpp>
 
 int main(int argc, char * argv[]) {
   rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<GroundGridNode>());
+  rclcpp::spin(std::make_shared<groundgrid::GroundGridCp>());
   rclcpp::shutdown();
   return 0;
 }

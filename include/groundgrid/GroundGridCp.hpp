@@ -45,19 +45,17 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace groundgrid
 {
 
-class GroundGridNodeCp : public rclcpp::Node
+class GroundGridCp : public rclcpp::Node
 {
 public:
   using PCLPoint = velodyne_pointcloud::PointXYZIR;
-
-  GroundGridNodeCp()
-  : Node("groundgrid_node"), tf_buffer_(this->get_clock()), tf_listener_(tf_buffer_);
+  explicit GroundGridCp(const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
 
 private:
   void load_parameters();
   void handle_cloud(const sensor_msgs::msg::PointCloud2::SharedPtr msg);
 
-  std::shared_ptr<groundgrid::GroundGridConfig> config_;
+  groundgrid::GroundGridConfig config_;
   std::shared_ptr<groundgrid::GroundGrid> grid_;
   groundgrid::GroundSegmentation segmentation_;
   std::shared_ptr<grid_map::GridMap> map_ptr_;

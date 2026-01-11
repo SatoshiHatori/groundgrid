@@ -23,14 +23,17 @@ IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISI
 OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include <groundgrid/GroundGridNodeCp.hpp>
+#include <groundgrid/GroundGridCp.hpp>
+#include <rclcpp_components/register_node_macro.hpp>  // ヘッダから移動
 
 namespace groundgrid
 {
-GroundGridNodeCp::GroundGridNodeCp()
-: Node("groundgrid_node"), tf_buffer_(this->get_clock()), tf_listener_(tf_buffer_)
+GroundGridCp::GroundGridCp(const rclcpp::NodeOptions &options)
+: rclcpp::Node("groundgrid_component", options),
+  tf_buffer_(this->get_clock()),
+  tf_listener_(tf_buffer_)
 {
-  // Set parameters
+  grid_ = std::make_shared<groundgrid::GroundGrid>();
   load_parameters();
   grid_->setConfig(config_);
   segmentation_.setConfig(config_);
@@ -51,38 +54,36 @@ GroundGridNodeCp::GroundGridNodeCp()
     create_publisher<grid_map_msgs::msg::GridMap>("/groundgrid/grid_map", rclcpp::QoS(1));
 }
 
-void GroundGridNodeCp::load_parameters()
+void GroundGridCp::load_parameters()
 {
-  config_->point_count_cell_variance_threshold =
+  config_.point_count_cell_variance_threshold =
     declare_parameter<int>("point_count_cell_variance_threshold", 10);
-  config_->max_ring = declare_parameter<int>("max_ring", 1024);
-  config_->groundpatch_detection_minimum_threshold =
+  config_.max_ring = declare_parameter<int>("max_ring", 1024);
+  config_.groundpatch_detection_minimum_threshold =
     declare_parameter<double>("groundpatch_detection_minimum_threshold", 0.01);
-  config_->distance_factor = declare_parameter<double>("distance_factor", 0.0001);
-  config_->minimum_distance_factor = declare_parameter<double>("minimum_distance_factor", 0.0005);
-  config_->miminum_point_height_threshold =
+  config_.distance_factor = declare_parameter<double>("distance_factor", 0.0001);
+  config_.minimum_distance_factor = declare_parameter<double>("minimum_distance_factor", 0.0005);
+  config_.miminum_point_height_threshold =
     declare_parameter<double>("miminum_point_height_threshold", 0.3);
-  config_->minimum_point_height_obstacle_threshold =
+  config_.minimum_point_height_obstacle_threshold =
     declare_parameter<double>("minimum_point_height_obstacle_threshold", 0.1);
-  config_->outlier_tolerance = declare_parameter<double>("outlier_tolerance", 0.1);
-  config_->ground_patch_detection_minimum_point_count_threshold =
+  config_.outlier_tolerance = declare_parameter<double>("outlier_tolerance", 0.1);
+  config_.ground_patch_detection_minimum_point_count_threshold =
     declare_parameter<double>("ground_patch_detection_minimum_point_count_threshold", 0.25);
-  config_->patch_size_change_distance =
+  config_.patch_size_change_distance =
     declare_parameter<double>("patch_size_change_distance", 20.0);
-  config_->occupied_cells_decrease_factor =
+  config_.occupied_cells_decrease_factor =
     declare_parameter<double>("occupied_cells_decrease_factor", 5.0);
-  config_->occupied_cells_point_count_factor =
+  config_.occupied_cells_point_count_factor =
     declare_parameter<double>("occupied_cells_point_count_factor", 20.0);
-  config_->min_outlier_detection_ground_confidence =
+  config_.min_outlier_detection_ground_confidence =
     declare_parameter<double>("min_outlier_detection_ground_confidence", 1.25);
-  config_->thread_count = declare_parameter<int>("thread_count", 8);
+  config_.thread_count = declare_parameter<int>("thread_count", 8);
 }
 
-void GroundGridNodeCp::handle_cloud(const sensor_msgs::msg::PointCloud2::SharedPtr msg)
+void GroundGridCp::handle_cloud(sensor_msgs::msg::PointCloud2::SharedPtr msg)
 {
-  // Map not initialized yet, this means the node hasn't received any odom message so far.
   if (!map_ptr_) return;
-  // TODO(HTR): create parameter for global frame
 
   pcl::PointCloud<PCLPoint>::Ptr cloud(new pcl::PointCloud<PCLPoint>);
   pcl::fromROSMsg(*msg, *cloud);
@@ -110,40 +111,25 @@ void GroundGridNodeCp::handle_cloud(const sensor_msgs::msg::PointCloud2::SharedP
     geometry_msgs::msg::TransformStamped map2cloud_tf;
     pcl::PointCloud<PCLPoint>::Ptr transformed(new pcl::PointCloud<PCLPoint>);
     transformed->points.reserve(cloud->points.size());
-    try {
-      tf_buffer_.canTransform(
-        "map", msg->header.frame_id, msg->header.stamp, tf2::durationFromSec(0.0));
-      map2cloud_tf = tf_buffer_
-                       .lookupTransform(
-                         "map", msg->header.frame_id, msg->header.stamp, tf2::durationFromSec(0.0))
-                       .transform.translation;
-    } catch (tf2::TransformException & ex) {
-      RCLCPP_WARN(
-        get_logger(), "Failed to get map transform for point cloud transformation: %s", ex.what());
-      return;
-    }
+    map2cloud_tf = tf_buffer_.lookupTransform(
+      "map", msg->header.frame_id, msg->header.stamp, tf2::durationFromSec(0.0));
 
     geometry_msgs::msg::PointStamped ps_in;
     ps_in.header = msg->header;
     ps_in.header.frame_id = "map";
-
     for (const auto & p : cloud->points) {
-      ps_in.point.x = p.x;
-      ps_in.point.y = p.y;
-      ps_in.point.z = p.z;
+      ps_in.point.x = p.x; ps_in.point.y = p.y; ps_in.point.z = p.z;
       tf2::doTransform(ps_in, ps_in, map2cloud_tf);
       PCLPoint & tp = transformed->points.emplace_back(p);
-      tp.x = ps_in.point.x;
-      tp.y = ps_in.point.y;
-      tp.z = ps_in.point.z;
+      tp.x = ps_in.point.x; tp.y = ps_in.point.y; tp.z = ps_in.point.z;
     }
     cloud = transformed;
   }
 
-  PCLPoint origin_point;
-  origin_point.x = origin.point.x;
-  origin_point.y = origin.point.y;
-  origin_point.z = origin.point.z;
+  PCLPoint origin_point{
+    static_cast<float>(origin.point.x),
+    static_cast<float>(origin.point.y),
+    static_cast<float>(origin.point.z)};
 
   sensor_msgs::msg::PointCloud2 point_cloud_out;
   pcl::toROSMsg(
@@ -153,10 +139,10 @@ void GroundGridNodeCp::handle_cloud(const sensor_msgs::msg::PointCloud2::SharedP
   point_cloud_out.header.frame_id = "map";
   cloud_pub_->publish(point_cloud_out);
 
-  grid_map_msgs::msg::GridMap grid_msg;
-  grid_map::GridMapRosConverter::toMessage(*map_ptr_, grid_msg);
-  grid_msg.info.header.stamp = msg->header.stamp;
-  gridmap_pub_->publish(grid_msg);
+  auto grid_msg = grid_map::GridMapRosConverter::toMessage(*map_ptr_);
+  grid_msg->header.stamp = msg->header.stamp;
+  gridmap_pub_->publish(std::move(grid_msg));
 }
 
 }  // namespace groundgrid
+RCLCPP_COMPONENTS_REGISTER_NODE(groundgrid::GroundGridCp)
